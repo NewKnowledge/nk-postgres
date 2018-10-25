@@ -17,7 +17,7 @@ class PostgresConnectionManager:
         self.pool = self.get_connection_pool()
 
     @retry(wait_exponential_multiplier=1000, wait_exponential_max=10000, stop_max_attempt_number=3)
-    def exec_query(self, query, query_params=None):
+    def execute(self, query, query_params=None):
         """ Execute a query against the db using a connection pool. This function gets a connection from the pool, executes the query, then
         returns the connection to the pool. If it encounters an psycopg2.InterfaceError, it resets the connection pool, then errors out.
         The retry wrapper will catch the error and retry with exponential backoff until it hits the max number of retries. """
@@ -70,11 +70,13 @@ def get_pg_connection(db_config={}):
     return psycopg2.connect(**conn_conf)
 
 
-def execute_query(db_connection, query, query_params=None, fetchall=True):
-    """ Executes a query using the given db connection. This function creates
-    a cursor, executes the query and fetches the results which are returned
-    as a list. If return_cursor=True, the connection's cursor is returned
-    instead of fetching the results. """
+def execute_query(db_connection, query, query_params=None, fetch_type="all"):
+    """ Executes a query using the given db connection. This function creates a
+    cursor, executes the query and either fetches the results or returns the
+    cursor. If fetch_type is 'all', fetchall() is called on the cursor and the
+    results are returned as a list. If instead fetch_type='one', only the first
+    row is returned using fetchone(). Otherwise (e.g. if fetch_type=None), the
+    connection's cursor is returned instead of fetching the results. """
 
     # the connection 'with' block makes sure the transaction is automatically committed if no exception is raised in the with block.
     # If an exception is raised, rollback() is automatically called, preventing any changes from taking effect.
@@ -83,14 +85,16 @@ def execute_query(db_connection, query, query_params=None, fetchall=True):
         with conn.cursor() as cursor:
             # use the cursor to execute the query, including query params if any are given
             cursor.execute(query, vars=query_params)
-
-            #  if fetchall=True, and there are results to be returned (cursor.description will be non-null)
-            if fetchall and cursor.description:
-                # return the resulting list of rows from the query
-                return cursor.fetchall()
-
-            # o.w. return the cursor
-            return cursor
+            #  if there are results to be returned (cursor.description will be non-null)
+            if cursor.description:
+                if fetch_type is "all":
+                    # return the resulting list of rows from the query
+                    return cursor.fetchall()
+                if fetch_type is "one":
+                    # only return the first row of the query results
+                    return cursor.fetchone()
+                # o.w. return the cursor
+                return cursor
 
 
 def complete_config(db_config={}):
