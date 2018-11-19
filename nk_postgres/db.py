@@ -1,7 +1,7 @@
 """ This module manages db connections and connection pools and includes methods for querying a db given a connection or connection pool."""
 import psycopg2
 from psycopg2 import pool
-from psycopg2.extras import DictCursor
+from psycopg2.extras import DictCursor, execute_values
 from retrying import retry
 
 from nk_logger import get_logger
@@ -16,7 +16,11 @@ class PostgresConnectionManager:
         self.db_config = db_config
         self.pool = self.get_connection_pool()
 
-    @retry(wait_exponential_multiplier=1000, wait_exponential_max=10000, stop_max_attempt_number=3)
+    @retry(
+        wait_exponential_multiplier=1000,
+        wait_exponential_max=10000,
+        stop_max_attempt_number=3,
+    )
     def execute(self, query, query_params=None):
         """ Execute a query against the db using a connection pool. This function gets a connection from the pool, executes the query, then
         returns the connection to the pool. If it encounters an psycopg2.InterfaceError, it resets the connection pool, then errors out.
@@ -37,7 +41,33 @@ class PostgresConnectionManager:
 
         # if we get an error with the connection, reset the pool and error out (possibly retrying)
         except psycopg2.InterfaceError as err:
-            logger.exception(f"error while executing query, resetting {self.name} connection pool ")
+            logger.exception(
+                f"error while executing query, resetting {self.name} connection pool "
+            )
+            self.pool.putconn(db_conn)
+            self.reset_connection_pool()
+            raise err
+
+    def execute_values(self, query, row_values):
+        try:
+            # get a connection from the pool and execute the given query with that connection
+            logger.debug(f"getting db connection from {self.name} connection pool")
+            db_conn = self.pool.getconn()
+
+            logger.debug(f"making execute_values query {query}")
+
+            with db_conn.cursor() as cursor:
+                execute_values(cursor, query, row_values)
+            db_conn.commit()  # NOTE: commit here bc execute_values does weird stuff sometimes
+
+            logger.debug(f"putting connection back into {self.name} connection pool")
+            self.pool.putconn(db_conn)
+
+        # if we get an error with the connection, reset the pool and error out (possibly retrying)
+        except psycopg2.InterfaceError as err:
+            logger.exception(
+                f"error during execute_values query, resetting {self.name} connection pool "
+            )
             self.pool.putconn(db_conn)
             self.reset_connection_pool()
             raise err
@@ -49,7 +79,9 @@ class PostgresConnectionManager:
 
     def reset_connection_pool(self):
         """ close all connections and reset the connection pool """
-        logger.debug(f"closing all connections, then resetting {self.name} connection pool")
+        logger.debug(
+            f"closing all connections, then resetting {self.name} connection pool"
+        )
         self.pool.closeall()
         self.pool = self.get_connection_pool()
 
@@ -63,7 +95,11 @@ class PostgresConnectionManager:
             return pool.SimpleConnectionPool(minconn, maxconn, **conn_conf)
 
 
-@retry(wait_exponential_multiplier=1000, wait_exponential_max=10000, stop_max_attempt_number=3)
+@retry(
+    wait_exponential_multiplier=1000,
+    wait_exponential_max=10000,
+    stop_max_attempt_number=3,
+)
 def get_pg_connection(db_config={}):
     """ get a pg connection object using the given db_config, with defaults set in complete_config. """
     conn_conf = complete_config(db_config)
