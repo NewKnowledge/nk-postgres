@@ -32,6 +32,7 @@ def _register_config(db_config):
 @contextmanager
 def psycopg_cursor(db_config, sslmode='require', cursor_factory=None):
     db_config = _complete_config(db_config, sslmode=sslmode, cursor_factory=cursor_factory)
+    print('cursor for', db_config, _config_hash(db_config))
     _register_config(db_config)
     with _config_to_mgr[_config_hash(db_config)].cursor() as cursor:
         yield cursor
@@ -57,8 +58,8 @@ class PostgresConnectionManager:
             db_conn = self.pool.getconn()
 
             #yield db_conn
-            with db_conn.cursor() as cursor:
-                logger.debug(f"yielding cursor")
+            with db_conn.cursor(cursor_factory=self.db_config['cursor_factory']) as cursor:
+                logger.debug(f"yielding cursor {self.db_config['cursor_factory']}")
                 yield cursor
             db_conn.commit()
 

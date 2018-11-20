@@ -18,4 +18,5 @@ def wait_for_pg_service(db_config):
     return connect(**db_config)
 
 def _config_hash(db_config): 
-    return hash(frozenset(db_config))
+    return hash(f'{db_config}')
+

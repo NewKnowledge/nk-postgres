@@ -2,7 +2,7 @@ import datetime
 from uuid import uuid4
 from contextlib import contextmanager
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker
 
 from .util import validate_db_config, wait_for_pg_service, _config_hash
@@ -31,13 +31,18 @@ def _register_config(db_config):
 def sqla_metadata(db_config, schema): 
     """ get metadata from the bind """ 
     _register_config(db_config)
-    return MetaData(bind=_config_to_sqla['engine'], reflect=True, schema=schema)
+    return MetaData(bind=_config_to_sqla[_config_hash(db_config)]['engine'], reflect=False, schema=schema)
+
+def sqla_engine(db_config):
+    _register_config(db_config)
+    return _config_to_sqla[_config_hash(db_config)]['engine']
+    
 
 @contextmanager
 def sqla_cursor(db_config):
     _register_config(db_config)
 
-    session = _config_to_sqla[db_config]['session']()
+    session = _config_to_sqla[_config_hash(db_config)]['session']()
     session.expire_on_commit = False
     try:
         yield session
