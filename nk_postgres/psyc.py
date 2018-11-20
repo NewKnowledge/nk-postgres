@@ -5,9 +5,7 @@ from psycopg2 import pool
 from psycopg2.extras import DictCursor, execute_values
 
 from nk_logger import get_logger
-
 logger = get_logger(__name__, level='DEBUG')
-
 
 from .util import validate_db_config, wait_for_pg_service, _config_hash
 
@@ -23,6 +21,7 @@ def _complete_config(db_config, sslmode='require', cursor_factory=None):
 
 _config_to_mgr = {}
 def _register_config(db_config): 
+    """ create a connection manager for this specific config """
     if _config_hash(db_config) in _config_to_mgr:
         return
     validate_db_config(db_config)
@@ -31,6 +30,7 @@ def _register_config(db_config):
 
 @contextmanager
 def psycopg_cursor(db_config, sslmode='require', cursor_factory=None):
+    """ use `with psycopg_cursor(DB_CONFIG) as c:` to use the connection pool """
     db_config = _complete_config(db_config, sslmode=sslmode, cursor_factory=cursor_factory)
     print('cursor for', db_config, _config_hash(db_config))
     _register_config(db_config)
@@ -38,8 +38,10 @@ def psycopg_cursor(db_config, sslmode='require', cursor_factory=None):
         yield cursor
 
 class PostgresConnectionManager:
+    """ A connection manager for psycopg connection pools. instantiate this per-config """
+
     def __init__(self, db_config, name=None):
-        """ A connection manager """
+        """ store the db config and attempt to provide a good name for the connection """
         self.name = name or db_config['dbname'] or 'db'
         self.db_config = db_config
         self.pool = self.get_connection_pool()
@@ -50,7 +52,10 @@ class PostgresConnectionManager:
         This function gets a connection from the pool, yields the cursor, then
         returns the connection to the pool. If it encounters an 
         psycopg2.InterfaceError, it resets the connection pool, then errors out.
-        The retry wrapper will catch the error and retry with exponential backoff until it hits the max number of retries. 
+        
+        TODO: restore retry wrapper? 
+        - The retry wrapper will catch the error and retry with exponential backoff 
+        - until it hits the max number of retries. 
         """
         try:
             # get a connection from the pool and execute the given query with that connection
@@ -101,32 +106,4 @@ class PostgresConnectionManager:
             return pool.ThreadedConnectionPool(minconn, maxconn, **self.db_config)
         else:
             return pool.SimpleConnectionPool(minconn, maxconn, **self.db_config)
-
-
-def execute_query(db_connection, query, query_params=None, fetch_type="all"):
-    """ Executes a query using the given db connection. This function creates a
-    cursor, executes the query and either fetches the results or returns the
-    cursor. If fetch_type is 'all', fetchall() is called on the cursor and the
-    results are returned as a list. If instead fetch_type='one', only the first
-    row is returned using fetchone(). Otherwise (e.g. if fetch_type=None), the
-    connection's cursor is returned instead of fetching the results. """
-
-    # the connection 'with' block makes sure the transaction is automatically committed if no exception is raised in the with block.
-    # If an exception is raised, rollback() is automatically called, preventing any changes from taking effect.
-    with db_connection as conn:
-        # get a cursor using the given connection in a with block to make sure the cursor is closed afterwards
-        with conn.cursor() as cursor:
-            # use the cursor to execute the query, including query params if any are given
-            cursor.execute(query, vars=query_params)
-            #  if there are results to be returned (cursor.description will be non-null)
-            if cursor.description:
-                if fetch_type is "all":
-                    # return the resulting list of rows from the query
-                    return cursor.fetchall()
-                if fetch_type is "one":
-                    # only return the first row of the query results
-                    return cursor.fetchone()
-                # o.w. return the cursor
-                return cursor
-
 

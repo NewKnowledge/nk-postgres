@@ -1,11 +1,8 @@
-from nk_postgres import validate_db_config, psycopg_cursor
-
 import psycopg2
 from psycopg2.extras import execute_values, DictCursor
-
 import pytest
 
-
+from nk_postgres import validate_db_config, psycopg_cursor
 
 DB_CONFIG = { 
         'host': 'localhost',
@@ -22,14 +19,12 @@ def test_basic():
     with psycopg_cursor(DB_CONFIG, sslmode='allow') as cursor: 
         cursor.execute("""SELECT 1""")
 
-
 @pytest.fixture()
 def blank_foo(request):
     with psycopg_cursor(DB_CONFIG, sslmode='allow') as cursor:
         cursor.execute("DROP TABLE IF EXISTS foo")
         cursor.execute("CREATE TABLE IF NOT EXISTS foo (x int, y float)")
         cursor.execute("INSERT INTO foo VALUES (20, .9876)")
-
 
 def test_query(blank_foo):
     with psycopg_cursor(DB_CONFIG, sslmode='allow') as cursor:
@@ -52,5 +47,4 @@ def test_dict_cursor(blank_foo):
             assert type(xy_dict['x']) == int
             assert 'y' in xy_dict
             assert type(xy_dict['y']) == float 
-
 

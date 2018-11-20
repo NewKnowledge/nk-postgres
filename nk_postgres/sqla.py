@@ -1,5 +1,3 @@
-import datetime
-from uuid import uuid4
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine, MetaData
@@ -10,6 +8,7 @@ from .util import validate_db_config, wait_for_pg_service, _config_hash
 _config_to_sqla = {}
 
 def _register_config(db_config):
+    """ store engine and sessionmaker objects for this specific db config """
     if _config_hash(db_config) in _config_to_sqla:
         return
 
@@ -29,17 +28,26 @@ def _register_config(db_config):
             }
 
 def sqla_metadata(db_config, schema): 
-    """ get metadata from the bind """ 
+    """ 
+    get metadata reflected from the existing db, via the engine. 
+    Only use this if you want to reflect. If you are constructing ORM classes
+    via DeclarativeBase, just construct a client side metadata via class statements
+    see tests/test_sqla.py for example patterns
+    """ 
     _register_config(db_config)
-    return MetaData(bind=_config_to_sqla[_config_hash(db_config)]['engine'], reflect=False, schema=schema)
+    return MetaData(bind=_config_to_sqla[_config_hash(db_config)]['engine'], reflect=True, schema=schema)
 
 def sqla_engine(db_config):
+    """ retrieve the engine object out of the global registry """
     _register_config(db_config)
     return _config_to_sqla[_config_hash(db_config)]['engine']
-    
 
 @contextmanager
 def sqla_cursor(db_config):
+    """ 
+    get a cursor object for sqlalchemy connections. uses the Session model.
+    see tests for patterns, but generally: `with sqla_cursor(DB_CONFIG) as c:` 
+    """
     _register_config(db_config)
 
     session = _config_to_sqla[_config_hash(db_config)]['session']()

@@ -1,13 +1,8 @@
-
 import pytest
-
 from sqlalchemy import Column, DateTime, Float, Integer
 from sqlalchemy.ext.declarative import declarative_base
 
 from nk_postgres import validate_db_config, sqla_cursor, sqla_metadata, sqla_engine
-
-
-
 
 DB_CONFIG = { 
         'host': 'localhost',
@@ -24,7 +19,6 @@ def test_basic():
     with sqla_cursor(DB_CONFIG) as cursor: 
         cursor.execute("""SELECT 1""")
 
-
 @pytest.fixture()
 def blank_foo(request):
     with sqla_cursor(DB_CONFIG) as cursor:
@@ -32,12 +26,10 @@ def blank_foo(request):
         cursor.execute("CREATE TABLE IF NOT EXISTS foo (x int, y float)")
         cursor.execute("INSERT INTO foo VALUES (20, .9876)")
 
-
 def test_query(blank_foo):
     with sqla_cursor(DB_CONFIG) as cursor:
         xys = cursor.execute("SELECT * FROM foo").fetchall()
         assert len(xys)
-
 
 OrmTestBase = declarative_base()
 class OrmFoo(OrmTestBase):
@@ -62,4 +54,3 @@ def test_orm_basic(blank_orm):
         assert len(xys)
         print(xys)
         
-
