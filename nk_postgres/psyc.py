@@ -9,15 +9,15 @@ logger = get_logger(__name__, level='DEBUG')
 
 from .util import validate_db_config, wait_for_pg_service, _config_hash
 
-def _complete_config(db_config, sslmode='require', cursor_factory=None):
-    """ fill out missing config values with defaults then return the completed config object """
+def _complete_config(db_config):
+    """ 
+    fill out missing config values with defaults then return the completed config object.
+    this will alter the user's provided config 
+    """
     validate_db_config(db_config)
-    extras = dict(
-            sslmode=sslmode,
-            cursor_factory=cursor_factory
-    )
-    extras.update(db_config)
-    return extras
+    if 'sslmode' not in db_config:
+        db_config['sslmode'] = 'require'
+    return db_config
 
 _config_to_mgr = {}
 def _register_config(db_config): 
@@ -29,12 +29,13 @@ def _register_config(db_config):
     _config_to_mgr[_config_hash(db_config)] = PostgresConnectionManager(db_config)
 
 @contextmanager
-def psycopg_cursor(db_config, sslmode='require', cursor_factory=None):
+def psycopg_cursor(db_config, cursor_factory=None):
     """ use `with psycopg_cursor(DB_CONFIG) as c:` to use the connection pool """
-    db_config = _complete_config(db_config, sslmode=sslmode, cursor_factory=cursor_factory)
+    db_config = _complete_config(db_config)
     print('cursor for', db_config, _config_hash(db_config))
     _register_config(db_config)
-    with _config_to_mgr[_config_hash(db_config)].cursor() as cursor:
+    mgr = _config_to_mgr[_config_hash(db_config)]
+    with mgr.cursor(cursor_factory=cursor_factory) as cursor:
         yield cursor
 
 class PostgresConnectionManager:
@@ -42,12 +43,12 @@ class PostgresConnectionManager:
 
     def __init__(self, db_config, name=None):
         """ store the db config and attempt to provide a good name for the connection """
-        self.name = name or db_config['dbname'] or 'db'
+        self.name = name or db_config['dbname'] or 'unnamed-db'
         self.db_config = db_config
         self.pool = self.get_connection_pool()
 
     @contextmanager
-    def cursor(self):
+    def cursor(self, cursor_factory=None):
         """ yield a cursor that supports c.execute() and execute_values(c). 
         This function gets a connection from the pool, yields the cursor, then
         returns the connection to the pool. If it encounters an 
@@ -63,8 +64,8 @@ class PostgresConnectionManager:
             db_conn = self.pool.getconn()
 
             #yield db_conn
-            with db_conn.cursor(cursor_factory=self.db_config['cursor_factory']) as cursor:
-                logger.debug(f"yielding cursor {self.db_config['cursor_factory']}")
+            with db_conn.cursor(cursor_factory=cursor_factory) as cursor:
+                logger.debug(f"yielding cursor {cursor_factory}")
                 yield cursor
             db_conn.commit()
 

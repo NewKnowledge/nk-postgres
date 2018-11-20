@@ -9,36 +9,37 @@ DB_CONFIG = {
         'port': '5432',
         'user': 'socialexplore',
         'password': '', 
-        'dbname': 'social'
+        'dbname': 'social',
+        'sslmode': 'allow'
         } 
 
 def test_valid_db_config():
     validate_db_config(DB_CONFIG)
 
 def test_basic():
-    with psycopg_cursor(DB_CONFIG, sslmode='allow') as cursor: 
+    with psycopg_cursor(DB_CONFIG) as cursor: 
         cursor.execute("""SELECT 1""")
 
 @pytest.fixture()
 def blank_foo(request):
-    with psycopg_cursor(DB_CONFIG, sslmode='allow') as cursor:
+    with psycopg_cursor(DB_CONFIG) as cursor:
         cursor.execute("DROP TABLE IF EXISTS foo")
         cursor.execute("CREATE TABLE IF NOT EXISTS foo (x int, y float)")
         cursor.execute("INSERT INTO foo VALUES (20, .9876)")
 
 def test_query(blank_foo):
-    with psycopg_cursor(DB_CONFIG, sslmode='allow') as cursor:
+    with psycopg_cursor(DB_CONFIG) as cursor:
         cursor.execute("SELECT * FROM foo")
         xys = cursor.fetchall()
         assert len(xys)
 
 def test_execute_values(blank_foo):
-    with psycopg_cursor(DB_CONFIG, sslmode='allow') as cursor: 
+    with psycopg_cursor(DB_CONFIG) as cursor: 
         values = [(1, 3.1), (2, 200.1), (3, 0.004)]
         execute_values(cursor, """INSERT INTO foo VALUES %s""", values)
 
 def test_dict_cursor(blank_foo):
-    with psycopg_cursor(DB_CONFIG, sslmode='allow', cursor_factory=DictCursor) as cursor:
+    with psycopg_cursor(DB_CONFIG, cursor_factory=DictCursor) as cursor:
         cursor.execute("SELECT * FROM foo")
         xys = cursor.fetchall()
         assert len(xys)
