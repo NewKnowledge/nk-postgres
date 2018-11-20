@@ -38,6 +38,19 @@ def psycopg_cursor(db_config, cursor_factory=None):
     with mgr.cursor(cursor_factory=cursor_factory) as cursor:
         yield cursor
 
+def psycopg_query(db_config, query, query_params=None, fetch_type="all"): 
+    """ helper function to do a simple query """
+    with psycopg_cursor(db_config) as cursor:
+        cursor.execute(query, vars=query_params)
+        if not cursor.description:
+            return
+        if fetch_type == "all": 
+            return cursor.fetchall()
+        if fetch_type == "one":
+            return cursor.fetchone()
+
+
+
 class PostgresConnectionManager:
     """ A connection manager for psycopg connection pools. instantiate this per-config """
 
