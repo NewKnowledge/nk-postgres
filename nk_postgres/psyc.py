@@ -76,10 +76,11 @@ class PostgresConnectionManager:
             logger.debug(f"getting db connection from {self.name} connection pool")
             db_conn = self.pool.getconn()
 
-            #yield db_conn
-            with db_conn.cursor(cursor_factory=cursor_factory) as cursor:
-                logger.debug(f"yielding cursor {cursor_factory}")
-                yield cursor
+            # with statement around the connection should get us automatic rollback
+            with db_conn:
+                with db_conn.cursor(cursor_factory=cursor_factory) as cursor:
+                    logger.debug(f"yielding cursor {cursor_factory}")
+                    yield cursor
             db_conn.commit()
 
             logger.debug(f"putting connection back into {self.name} connection pool")
