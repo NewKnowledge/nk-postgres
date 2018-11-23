@@ -3,9 +3,9 @@ from setuptools import setup
 
 setup(
     name="nk_postgres",
-    version="1.0.0",
+    version="1.0.1",
     description="Utilities for managing connections and making queries against a PostgreSQL database using psycopg2.",
     packages=["nk_postgres"],
     include_package_data=True,
-    install_requires=["psycopg2-binary", "retrying"],
+    install_requires=["sqlalchemy", "psycopg2-binary", "retrying"],
 )
