@@ -5,7 +5,7 @@ from psycopg2 import pool
 from psycopg2.extras import DictCursor, execute_values
 
 from nk_logger import get_logger
-logger = get_logger(__name__, level='DEBUG')
+logger = get_logger(__name__)
 
 from .util import validate_db_config, wait_for_pg_service, _config_hash
 
@@ -24,15 +24,21 @@ def _register_config(db_config):
     """ create a connection manager for this specific config """
     if _config_hash(db_config) in _config_to_mgr:
         return
+    logger.info(f'creating PostgresConnectionManager for config = {db_config}')
     validate_db_config(db_config)
     wait_for_pg_service(db_config)
     _config_to_mgr[_config_hash(db_config)] = PostgresConnectionManager(db_config)
+
+def _psycopg_reset(db_config):
+    """ reset connections for this db config """
+    _register_config(db_config)
+    _config_to_mgr[_config_hash(db_config)].reset_connection_pool()
+
 
 @contextmanager
 def psycopg_cursor(db_config, cursor_factory=None):
     """ use `with psycopg_cursor(DB_CONFIG) as c:` to use the connection pool """
     db_config = _complete_config(db_config)
-    print('cursor for', db_config, _config_hash(db_config))
     _register_config(db_config)
     mgr = _config_to_mgr[_config_hash(db_config)]
     with mgr.cursor(cursor_factory=cursor_factory) as cursor:
@@ -50,7 +56,6 @@ def psycopg_query(db_config, query, query_params=None, fetch_type="all"):
             return cursor.fetchone()
 
 
-
 class PostgresConnectionManager:
     """ A connection manager for psycopg connection pools. instantiate this per-config """
 
@@ -62,7 +67,8 @@ class PostgresConnectionManager:
 
     @contextmanager
     def cursor(self, cursor_factory=None):
-        """ yield a cursor that supports c.execute() and execute_values(c). 
+        """ 
+        yield a cursor that supports c.execute() and execute_values(c). 
         This function gets a connection from the pool, yields the cursor, then
         returns the connection to the pool. If it encounters an 
         psycopg2.InterfaceError, it resets the connection pool, then errors out.
@@ -73,23 +79,22 @@ class PostgresConnectionManager:
         """
         try:
             # get a connection from the pool and execute the given query with that connection
-            logger.debug(f"getting db connection from {self.name} connection pool")
+            logger.debug(f'getting db connection from {self.name} connection pool')
             db_conn = self.pool.getconn()
 
             # with statement around the connection should get us automatic rollback
             with db_conn:
                 with db_conn.cursor(cursor_factory=cursor_factory) as cursor:
-                    logger.debug(f"yielding cursor {cursor_factory}")
                     yield cursor
             db_conn.commit()
 
-            logger.debug(f"putting connection back into {self.name} connection pool")
+            logger.debug(f'putting connection back into {self.name} connection pool')
             self.pool.putconn(db_conn)
 
-        # if we get an error with the connection, reset the pool and error out (possibly retrying)
+        # if we get an error with the connection, reset the pool and error out
         except psycopg2.InterfaceError as err:
             logger.exception(
-                f"error while executing query, resetting {self.name} connection pool "
+                f'error while executing query, resetting {self.name} connection pool'
             )
             self.pool.putconn(db_conn)
             self.reset_connection_pool()
@@ -103,20 +108,20 @@ class PostgresConnectionManager:
 
     def close_connection_pool(self):
         """ close all connections in pool """
-        logger.debug(f"closing all connections in {self.name} connection pool")
+        logger.debug(f'closing all connections in {self.name} connection pool')
         self.pool.closeall()
 
     def reset_connection_pool(self):
         """ close all connections and reset the connection pool """
-        logger.debug(
-            f"closing all connections, then resetting {self.name} connection pool"
+        logger.info(
+            f'closing all connections, then resetting {self.name} connection pool'
         )
         self.pool.closeall()
         self.pool = self.get_connection_pool()
 
     def get_connection_pool(self, threaded=False, minconn=2, maxconn=5):
         """ create a connection pool """
-        logger.debug(f"creating a connection using config: {self.db_config}")
+        logger.debug(f'creating a connection using config: {self.db_config}')
         if threaded:
             return pool.ThreadedConnectionPool(minconn, maxconn, **self.db_config)
         else:

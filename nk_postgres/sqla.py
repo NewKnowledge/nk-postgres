@@ -3,6 +3,9 @@ from contextlib import contextmanager
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker
 
+from nk_logger import get_logger
+logger = get_logger(__name__)
+
 from .util import validate_db_config, wait_for_pg_service, _config_hash
 
 _config_to_sqla = {}
@@ -12,6 +15,7 @@ def _register_config(db_config):
     if _config_hash(db_config) in _config_to_sqla:
         return
 
+    logger.info(f'creating sqlalchemy connection pool (engine) for config = {db_config}')
     validate_db_config(db_config)
     wait_for_pg_service(db_config)
 
@@ -50,12 +54,14 @@ def sqla_cursor(db_config):
     """
     _register_config(db_config)
 
+    logger.debug(f'preparing cursor for config = {db_config}')
     session = _config_to_sqla[_config_hash(db_config)]['session']()
     session.expire_on_commit = False
     try:
         yield session
         session.commit()
     except:
+        logger.exception(f'exception handled during yielded sqla_cursor. rolling back and reraising.')
         session.rollback()
         raise
     finally:
