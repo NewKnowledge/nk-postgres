@@ -11,6 +11,7 @@ retrying = "*"
 
 [dev-packages]
 pytest = "*"
+pytest-docker-compose = "*"
 
 [requires]
 python_version = "3.6"
