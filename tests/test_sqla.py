@@ -1,8 +1,15 @@
 import pytest
 from sqlalchemy import Column, DateTime, Float, Integer
 from sqlalchemy.ext.declarative import declarative_base
+import sqlalchemy.exc
 
-from nk_postgres import validate_db_config, sqla_cursor, sqla_metadata, sqla_engine
+from nk_postgres import (
+        validate_db_config, 
+        wait_for_pg_service,
+        sqla_cursor, 
+        sqla_metadata, 
+        sqla_engine
+        )
 
 from tests.conftest import TEST_DB_CONFIG
 
@@ -48,4 +55,24 @@ def test_orm_basic(session_pg, blank_orm):
         xys = cursor.query(OrmFoo).all()
         assert len(xys)
         print(xys)
+
+def test_server_down(killer_pg, docker_services):
+    with sqla_cursor(TEST_DB_CONFIG) as cursor: 
+        cursor.execute("SELECT 1")
+    docker_services.shutdown()
+    with pytest.raises(sqlalchemy.exc.OperationalError):
+        with sqla_cursor(TEST_DB_CONFIG) as cursor: 
+            cursor.execute("SELECT 1")
+
+def test_server_down_up(session_pg, docker_services):
+    with sqla_cursor(TEST_DB_CONFIG) as cursor: 
+        cursor.execute("SELECT 1")
+    docker_services.shutdown()
+    with pytest.raises(sqlalchemy.exc.OperationalError):
+        with sqla_cursor(TEST_DB_CONFIG) as cursor: 
+            cursor.execute("SELECT 1")
+    docker_services.start('test-pg-db')
+    wait_for_pg_service(TEST_DB_CONFIG)
+    with sqla_cursor(TEST_DB_CONFIG) as cursor: 
+        cursor.execute("SELECT 1")
 

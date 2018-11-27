@@ -41,7 +41,6 @@ def test_dict_cursor(session_pg, blank_foo):
             assert 'y' in xy_dict
             assert type(xy_dict['y']) == float 
 
-
 def test_server_down(killer_pg, docker_services):
     with psycopg_cursor(TEST_DB_CONFIG) as cursor: 
         cursor.execute("SELECT 1")
@@ -49,8 +48,6 @@ def test_server_down(killer_pg, docker_services):
     with pytest.raises(psycopg2.OperationalError):
         with psycopg_cursor(TEST_DB_CONFIG) as cursor: 
             cursor.execute("SELECT 1")
-
-   
 
 def test_server_down_up(session_pg, docker_services):
     with psycopg_cursor(TEST_DB_CONFIG) as cursor: 
