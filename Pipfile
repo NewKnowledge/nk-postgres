@@ -13,6 +13,8 @@ retrying = "*"
 pytest = "*"
 pytest-docker-compose = "*"
 lovely-pytest-docker = "*"
+pytest-repeat = "*"
+pytest-random-order = "*"
 
 [requires]
 python_version = "3.6"
