@@ -15,7 +15,7 @@ def test_basic(session_pg):
         cursor.execute("SELECT 1")
 
 @pytest.fixture()
-def blank_foo(request):
+def blank_foo(session_pg, request):
     with sqla_cursor(TEST_DB_CONFIG) as cursor:
         cursor.execute("DROP TABLE IF EXISTS foo")
         cursor.execute("CREATE TABLE IF NOT EXISTS foo (x int, y float)")
@@ -33,7 +33,7 @@ class OrmFoo(OrmTestBase):
     y = Column(Float)
 
 @pytest.fixture() 
-def blank_orm(request):
+def blank_orm(session_pg, request):
     OrmTestBase.metadata.drop_all(bind=sqla_engine(TEST_DB_CONFIG), checkfirst=True)
     OrmTestBase.metadata.create_all(bind=sqla_engine(TEST_DB_CONFIG), checkfirst=True)
 

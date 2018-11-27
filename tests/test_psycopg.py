@@ -2,7 +2,7 @@ import psycopg2
 from psycopg2.extras import execute_values, DictCursor
 import pytest
 
-from nk_postgres import validate_db_config, psycopg_cursor
+from nk_postgres import validate_db_config, psycopg_cursor, wait_for_pg_service
 from tests.conftest import TEST_DB_CONFIG
 
 def test_valid_db_config():
@@ -40,4 +40,31 @@ def test_dict_cursor(session_pg, blank_foo):
             assert type(xy_dict['x']) == int
             assert 'y' in xy_dict
             assert type(xy_dict['y']) == float 
+
+
+def test_server_down(session_pg, docker_services):
+    with psycopg_cursor(TEST_DB_CONFIG) as cursor: 
+        cursor.execute("SELECT 1")
+    docker_services.shutdown()
+    with pytest.raises(psycopg2.OperationalError):
+        with psycopg_cursor(TEST_DB_CONFIG) as cursor: 
+            cursor.execute("SELECT 1")
+    docker_services.start('test-pg-db')
+    wait_for_pg_service(TEST_DB_CONFIG)
+
+   
+
+def test_server_down_up(session_pg, docker_services):
+    with psycopg_cursor(TEST_DB_CONFIG) as cursor: 
+        cursor.execute("SELECT 1")
+    docker_services.shutdown()
+    with pytest.raises(psycopg2.OperationalError):
+        with psycopg_cursor(TEST_DB_CONFIG) as cursor: 
+            cursor.execute("SELECT 1")
+    docker_services.start('test-pg-db')
+    wait_for_pg_service(TEST_DB_CONFIG)
+    with psycopg_cursor(TEST_DB_CONFIG) as cursor: 
+        cursor.execute("SELECT 1")
+
+   
 

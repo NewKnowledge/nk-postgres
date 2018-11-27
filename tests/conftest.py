@@ -15,7 +15,7 @@ TEST_DB_CONFIG = {
         'dbname': 'test-db-name',
         'sslmode': 'allow'
         }
-
+    
 @pytest.fixture(scope='session')
 def session_pg(docker_services):
     """ 
@@ -65,6 +65,4 @@ def compose_pg(
     # TODO: retry feature 
     from nk_postgres import _psycopg_reset
     _psycopg_reset(TEST_DB_CONFIG)
-
-
 
