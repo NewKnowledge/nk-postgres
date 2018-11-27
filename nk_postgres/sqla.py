@@ -25,7 +25,13 @@ def _register_config(db_config):
     port = db_config['port']
     dbname = db_config['dbname']
 
-    engine = create_engine(f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}', pool_pre_ping=True)
+    pre_ping = True
+    if 'pre-ping' in db_config:
+        pre_ping = db_config['pre-ping']
+
+    engine = create_engine(f'postgresql+psycopg2://{user}:'
+            f'{password}@{host}:{port}/{dbname}', 
+            pool_pre_ping=pre_ping)
     _config_to_sqla[_config_hash(db_config)] = { 
             'engine': engine,
             'session': sessionmaker(bind=engine)

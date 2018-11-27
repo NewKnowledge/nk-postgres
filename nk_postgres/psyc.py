@@ -69,6 +69,8 @@ class PostgresConnectionManager:
         self.db_config = db_config
         self.pool = self.make_pool()
         self._pre_ping = True
+        if 'pre-ping' in db_config:
+            self._pre_ping = db_config['pre-ping']
 
     @contextmanager
     def cursor(self, cursor_factory=None):
