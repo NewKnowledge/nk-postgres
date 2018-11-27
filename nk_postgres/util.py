@@ -16,8 +16,8 @@ def wait_for_pg_service(db_config, max_wait_seconds=10.0):
     start_time = time()
     while True: 
         if time() - start_time >= timeout:
-            raise RuntimeError(f'postgres db {db_config["dbname"]} '
-                    'failed to come up after {timeout} seconds')
+            raise RuntimeError(f'postgres db {db_config} '
+                    f'failed to come up after {timeout} seconds')
 
         try:
             connect(**db_config)

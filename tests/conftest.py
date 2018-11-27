@@ -16,11 +16,25 @@ TEST_DB_CONFIG = {
         'sslmode': 'allow'
         }
 
+@pytest.fixture(scope='session')
+def session_pg(docker_services):
+    """ 
+    brings one docker container up for the entire session
+    about 10 seconds total overhead across N tests
+    """
+    docker_services.start('test-pg-db')
+    public_port = docker_services.port_for('test-pg-db', 5432)
+    TEST_DB_CONFIG['host'] = f'{docker_services.docker_ip}'
+    TEST_DB_CONFIG['port'] = f'{public_port}'
+    wait_for_pg_service(TEST_DB_CONFIG, max_wait_seconds=10.0)
+
 @pytest.fixture(name='compose_pg', scope='function')
 def compose_pg(
         docker_network_info: typing.Dict[str, typing.List[NetworkInfo]],
 ) -> None:
     """ 
+    THIS ONE CYCLES THE CONTAINER UP AND DOWN. TAKES ABOUT 10 SECONDS
+
     adjust global db config based on docker compose host info 
     then wait for the service to come up. 
 
@@ -47,6 +61,10 @@ def compose_pg(
     # but the connection manager isnt destroyed, so the connections
     # in the pool get closed. this resets all those closed connections
     # between tests
+
+    # TODO: retry feature 
     from nk_postgres import _psycopg_reset
     _psycopg_reset(TEST_DB_CONFIG)
+
+
 
