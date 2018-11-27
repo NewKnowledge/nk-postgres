@@ -28,6 +28,25 @@ def session_pg(docker_services):
     TEST_DB_CONFIG['port'] = f'{public_port}'
     wait_for_pg_service(TEST_DB_CONFIG, max_wait_seconds=10.0)
 
+@pytest.fixture(scope='function')
+def killer_pg(docker_services, request):
+    """
+    if you use docker_services in your test to crash pg,
+    then use this more time expensive wrapper that brings pg back up
+    """
+    docker_services.start('test-pg-db')
+    public_port = docker_services.port_for('test-pg-db', 5432)
+    TEST_DB_CONFIG['host'] = f'{docker_services.docker_ip}'
+    TEST_DB_CONFIG['port'] = f'{public_port}'
+    wait_for_pg_service(TEST_DB_CONFIG, max_wait_seconds=10.0)
+
+    def fin():
+        docker_services.start('test-pg-db')
+        wait_for_pg_service(TEST_DB_CONFIG, max_wait_seconds=10.0)
+
+    request.addfinalizer(fin)
+    return killer_pg
+
 @pytest.fixture(name='compose_pg', scope='function')
 def compose_pg(
         docker_network_info: typing.Dict[str, typing.List[NetworkInfo]],
