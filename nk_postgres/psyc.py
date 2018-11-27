@@ -24,7 +24,7 @@ def _register_config(db_config):
     """ create a connection manager for this specific config """
     if _config_hash(db_config) in _config_to_mgr:
         return
-    logger.info(f'creating PostgresConnectionManager for config = {db_config}')
+    logger.debug(f'creating PostgresConnectionManager for dbname = {db_config["dbname"]}')
     validate_db_config(db_config)
     wait_for_pg_service(db_config)
     _config_to_mgr[_config_hash(db_config)] = PostgresConnectionManager(db_config)
@@ -36,7 +36,7 @@ def _psycopg_reset(db_config):
 
 
 @contextmanager
-def psycopg_cursor(db_config, cursor_factory=None):
+def psycopg_cursor(db_config, cursor_factory=DictCursor):
     """ 
     Use `with psycopg_cursor(DB_CONFIG) as c:` to perform sql executes
     and execute_values. The with statement provides error handling that

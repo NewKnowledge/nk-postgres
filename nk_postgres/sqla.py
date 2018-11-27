@@ -15,7 +15,6 @@ def _register_config(db_config):
     if _config_hash(db_config) in _config_to_sqla:
         return
 
-    logger.info(f'creating sqlalchemy connection pool (engine) for config = {db_config}')
     validate_db_config(db_config)
     wait_for_pg_service(db_config)
 
@@ -24,6 +23,8 @@ def _register_config(db_config):
     host = db_config['host']
     port = db_config['port']
     dbname = db_config['dbname']
+
+    logger.debug(f'creating sqlalchemy connection pool (engine) for dbname = {dbname}')
 
     pre_ping = True
     if 'pre-ping' in db_config:
@@ -59,8 +60,6 @@ def sqla_cursor(db_config):
     see tests for patterns, but generally: `with sqla_cursor(DB_CONFIG) as c:` 
     """
     _register_config(db_config)
-
-    logger.debug(f'preparing cursor for config = {db_config}')
     session = _config_to_sqla[_config_hash(db_config)]['session']()
     session.expire_on_commit = False
     try:
