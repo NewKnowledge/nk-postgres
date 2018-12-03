@@ -11,13 +11,15 @@ def validate_db_config(db_config):
 
 def wait_for_pg_service(db_config, max_wait_seconds=10.0):
     validate_db_config(db_config)
-
     timeout = max_wait_seconds
     start_time = time()
     while True: 
         if time() - start_time >= timeout:
-            raise RuntimeError(f'postgres db {db_config["dbname"]} '
-                    f'failed to come up after {timeout} seconds')
+            # instead of raising a custom runtime error here, 
+            # lets give the connection one more attempt and let it
+            # raise the full psycopg error information to the user
+            connect(**db_config)
+            return
 
         try:
             connect(**db_config)

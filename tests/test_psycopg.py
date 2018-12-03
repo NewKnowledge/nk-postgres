@@ -61,5 +61,7 @@ def test_server_down_up(session_pg, docker_services):
     with psycopg_cursor(TEST_DB_CONFIG) as cursor: 
         cursor.execute("SELECT 1")
 
-   
+def test_set_work_mem(session_pg):
+    with psycopg_cursor(TEST_DB_CONFIG) as c:
+        c.execute("set work_mem to '4GB'")
 
