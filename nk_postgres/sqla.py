@@ -3,9 +3,6 @@ from contextlib import contextmanager
 from sqlalchemy import create_engine, MetaData
 from sqlalchemy.orm import sessionmaker
 
-from nk_logger import get_logger
-logger = get_logger(__name__)
-
 from .util import validate_db_config, wait_for_pg_service, _config_hash
 
 _config_to_sqla = {}
@@ -23,8 +20,6 @@ def _register_config(db_config):
     host = db_config['host']
     port = db_config['port']
     dbname = db_config['dbname']
-
-    logger.debug(f'creating sqlalchemy connection pool (engine) for dbname = {dbname}')
 
     pre_ping = True
     if 'pre-ping' in db_config:
@@ -66,7 +61,6 @@ def sqla_cursor(db_config):
         yield session
         session.commit()
     except:
-        logger.exception(f'exception handled during yielded sqla_cursor. rolling back and reraising.')
         session.rollback()
         raise
     finally:

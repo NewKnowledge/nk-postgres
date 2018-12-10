@@ -4,9 +4,6 @@ import psycopg2
 from psycopg2 import pool
 from psycopg2.extras import DictCursor, execute_values
 
-from nk_logger import get_logger
-logger = get_logger(__name__)
-
 from .util import validate_db_config, wait_for_pg_service, _config_hash
 
 def _complete_config(db_config):
@@ -24,7 +21,6 @@ def _register_config(db_config):
     """ create a connection manager for this specific config """
     if _config_hash(db_config) in _config_to_mgr:
         return
-    logger.debug(f'creating PostgresConnectionManager for dbname = {db_config["dbname"]}')
     validate_db_config(db_config)
     wait_for_pg_service(db_config)
     _config_to_mgr[_config_hash(db_config)] = PostgresConnectionManager(db_config)
@@ -84,7 +80,6 @@ class PostgresConnectionManager:
         - The retry wrapper will catch the error and retry with exponential backoff 
         - until it hits the max number of retries. 
         """
-        logger.debug(f'getting db connection from {self.name} connection pool')
         db_conn = None 
 
         # first, pre ping
@@ -95,11 +90,9 @@ class PostgresConnectionManager:
                     with db_conn.cursor() as cursor:
                         cursor.execute("SELECT 1")
             except (psycopg2.InterfaceError, psycopg2.OperationalError) as pg_err:
-                logger.exception(f'pre-ping failed')
                 self.reset_pool()
                 db_conn = self.pool.getconn()
             except psycopg2.pool.PoolError as pool_err:
-                logger.exception(f'pre-ping failed with a pool error.')
                 self.pool = self.make_pool()
                 db_conn = self.pool.getconn()
         
@@ -113,26 +106,20 @@ class PostgresConnectionManager:
                     yield cursor
             db_conn.commit()
 
-            logger.debug(f'putting connection back into {self.name} connection pool')
             self.pool.putconn(db_conn)
 
         # if we get an error with the connection, reset the pool and error out
         except: 
-            logger.exception(f'error with yielded context from pg db {self.name}')
             self.pool.putconn(db_conn)
             self.reset_pool()
             raise
 
     def reset_pool(self):
         """ close all connections and reset the connection pool """
-        logger.info(
-            f'closing all connections, then resetting {self.name} connection pool'
-        )
         self.pool.closeall()
         self.pool = self.make_pool()
 
     def make_pool(self, minconn=2, maxconn=5):
         """ create a connection pool """
-        logger.debug(f'creating a connection using config: {self.db_config}')
         return pool.SimpleConnectionPool(minconn, maxconn, **self.db_config)
 

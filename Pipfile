@@ -6,7 +6,6 @@ name = "pypi"
 [packages]
 sqlalchemy = "*"
 "psycopg2-binary" = "*"
-nk_logger = {git = "ssh://git@github.com/NewKnowledge/nk-logger.git", editable = true}
 retrying = "*"
 
 [dev-packages]
