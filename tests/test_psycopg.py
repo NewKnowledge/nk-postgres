@@ -2,7 +2,10 @@ import psycopg2
 from psycopg2.extras import execute_values, DictCursor
 import pytest
 
-from nk_postgres import validate_db_config, psycopg_cursor, wait_for_pg_service
+from nk_postgres import (
+        validate_db_config, psycopg_cursor, wait_for_pg_service,
+        psycopg_query_exec, psycopg_query_one, psycopg_query_all
+        )
 from tests.conftest import TEST_DB_CONFIG
 
 def test_valid_db_config():
@@ -29,6 +32,16 @@ def test_execute_values(session_pg, blank_foo):
     with psycopg_cursor(TEST_DB_CONFIG) as cursor: 
         values = [(1, 3.1), (2, 200.1), (3, 0.004)]
         execute_values(cursor, "INSERT INTO foo VALUES %s", values)
+
+def test_helpers(session_pg, blank_foo): 
+    psycopg_query_exec(TEST_DB_CONFIG, "INSERT INTO foo VALUES (8, 2.5), (9, 9.9), (10, 10.10)")
+    assert 2.5 == psycopg_query_one(TEST_DB_CONFIG, "SELECT * FROM foo WHERE x = 8")["y"]
+    foos = psycopg_query_all(TEST_DB_CONFIG, "SELECT * FROM foo")
+    assert len(foos)
+    for foo in foos:
+        assert 'x' in foo
+        assert 'y' in foo
+
 
 def test_dict_cursor(session_pg, blank_foo):
     with psycopg_cursor(TEST_DB_CONFIG, cursor_factory=DictCursor) as cursor:

@@ -55,6 +55,24 @@ def psycopg_query(db_config, query, query_params=None, fetch_type="all"):
         if fetch_type == "one":
             return cursor.fetchone()
 
+def psycopg_query_exec(db_config, query, query_params=None):
+    """ execute a query with no results """
+    with psycopg_cursor(db_config) as cursor:
+        cursor.execute(query, vars=query_params)
+
+def psycopg_query_one(db_config, query, query_params=None):
+    """ execute a query and fetch one """
+    with psycopg_cursor(db_config) as cursor:
+        cursor.execute(query, vars=query_params)
+        return cursor.fetchone()
+
+def psycopg_query_all(db_config, query, query_params=None):
+    """ execute a query and fetch all """
+    with psycopg_cursor(db_config) as cursor:
+        cursor.execute(query, vars=query_params)
+        return cursor.fetchall()
+
+
 
 class PostgresConnectionManager:
     """ A connection manager for psycopg connection pools. instantiate this per-config """
