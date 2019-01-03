@@ -4,7 +4,8 @@ import pytest
 
 from nk_postgres import (
         validate_db_config, psycopg_cursor, wait_for_pg_service,
-        psycopg_query_exec, psycopg_query_one, psycopg_query_all
+        psycopg_query_exec, psycopg_query_one, psycopg_query_all,
+        pg_query_exec, pg_query_one, pg_query_all
         )
 from tests.conftest import TEST_DB_CONFIG
 
@@ -37,6 +38,16 @@ def test_helpers(session_pg, blank_foo):
     psycopg_query_exec(TEST_DB_CONFIG, "INSERT INTO foo VALUES (8, 2.5), (9, 9.9), (10, 10.10)")
     assert 2.5 == psycopg_query_one(TEST_DB_CONFIG, "SELECT * FROM foo WHERE x = 8")["y"]
     foos = psycopg_query_all(TEST_DB_CONFIG, "SELECT * FROM foo")
+    assert len(foos)
+    for foo in foos:
+        assert 'x' in foo
+        assert 'y' in foo
+
+
+def test_short_names(session_pg, blank_foo): 
+    pg_query_exec(TEST_DB_CONFIG, "INSERT INTO foo VALUES (28, 2.5), (29, 9.9), (30, 10.10)")
+    assert 2.5 == pg_query_one(TEST_DB_CONFIG, "SELECT * FROM foo WHERE x = 28")["y"]
+    foos = pg_query_all(TEST_DB_CONFIG, "SELECT * FROM foo")
     assert len(foos)
     for foo in foos:
         assert 'x' in foo
