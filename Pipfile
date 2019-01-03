@@ -16,4 +16,4 @@ pytest-repeat = "*"
 pytest-random-order = "*"
 
 [requires]
-python_version = "3.6"
+python_version = "3"
