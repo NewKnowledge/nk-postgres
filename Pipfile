@@ -5,8 +5,9 @@ name = "pypi"
 
 [packages]
 sqlalchemy = "*"
-"psycopg2-binary" = "*"
+psycopg2-binary = "*"
 retrying = "*"
+pyyaml = "==4.2b4"
 
 [dev-packages]
 pytest = "*"
