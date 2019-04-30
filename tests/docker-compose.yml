@@ -1,11 +1,10 @@
-version: '3' 
+version: '3'
 services:
     test-pg-db:
-        ports: 
+        ports:
             - "5432:5432"
         image: postgres:10-alpine
-        environment: 
+        environment:
             POSTGRES_USER: test-user
             POSTGRES_PASSWORD: test-abcd
             POSTGRES_DB: test-db-name
-
